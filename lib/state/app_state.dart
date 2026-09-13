@@ -408,6 +408,12 @@ class AppState extends ChangeNotifier {
   // Tournament setup flow
   void startTournament() {
     session.name = session.name.trim().isEmpty ? "Padel Session" : session.name.trim();
+    if (session.passcode.trim().isEmpty) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      final rand = Random();
+      final part = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
+      session.passcode = 'PDL-$part';
+    }
     setupStep = "roster";
     saveCurrentSessionToStorage();
     notifyListeners();

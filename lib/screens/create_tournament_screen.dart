@@ -25,7 +25,6 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   late TextEditingController _dateController;
   late TextEditingController _startController;
   late TextEditingController _endController;
-  late TextEditingController _passcodeController;
 
   // Join form controllers
   late TextEditingController _joinDateController;
@@ -61,7 +60,6 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
     _dateController = TextEditingController(text: initialDate);
     _startController = TextEditingController(text: widget.state.session.timeStart);
     _endController = TextEditingController(text: widget.state.session.timeEnd);
-    _passcodeController = TextEditingController(text: initialPasscode);
 
     _joinDateController = TextEditingController(text: defaultDate);
     _joinPasscodeController = TextEditingController();
@@ -84,7 +82,6 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
     _dateController.dispose();
     _startController.dispose();
     _endController.dispose();
-    _passcodeController.dispose();
     _joinDateController.dispose();
     _joinPasscodeController.dispose();
     super.dispose();
@@ -95,7 +92,9 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
     widget.state.session.date = _dateController.text;
     widget.state.session.timeStart = _startController.text;
     widget.state.session.timeEnd = _endController.text;
-    widget.state.session.passcode = _passcodeController.text.trim();
+    if (widget.state.session.passcode.trim().isEmpty) {
+      widget.state.session.passcode = generateUniqueCode();
+    }
   }
 
   Future<void> _pickDate({bool isJoin = false}) async {
@@ -168,7 +167,6 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final canContinue = _nameController.text.trim().isNotEmpty &&
-        _passcodeController.text.trim().isNotEmpty &&
         _dateController.text.trim().isNotEmpty;
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -610,78 +608,6 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
             _syncState();
             setState(() {});
           },
-        ),
-        const SizedBox(height: 18),
-
-        // Session Passcode / Unique Code
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            _buildLabel("Session Code (Auto-Generated)"),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.emerald.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                "Unique Room Code",
-                style: TextStyle(fontSize: 11, color: AppColors.emerald, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: AppDecorations.cleanWhiteCard(borderRadius: 14),
-          child: Row(
-            children: [
-              const Icon(Icons.vpn_key_rounded, color: AppColors.emerald, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _passcodeController,
-                  textCapitalization: TextCapitalization.characters,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: AppColors.darkGreen,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: "PDL-XXXX",
-                  ),
-                  onChanged: (val) {
-                    _syncState();
-                    setState(() {});
-                  },
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  final newCode = generateUniqueCode();
-                  _passcodeController.text = newCode;
-                  _syncState();
-                  setState(() {});
-                },
-                tooltip: "Buat Kode Baru",
-                icon: const Icon(Icons.refresh_rounded, color: AppColors.emerald, size: 20),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          "💡 Kode unik ini otomatis dibuat untuk sesi turnamen Anda. Pemain cukup memasukkan kode ini untuk bergabung.",
-          style: TextStyle(
-            fontSize: 11.5,
-            color: AppColors.textSecondary,
-          ),
         ),
         const SizedBox(height: 18),
 
