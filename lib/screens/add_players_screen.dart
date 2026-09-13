@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/rename_player_dialog.dart';
 
 class AddPlayersScreen extends StatefulWidget {
   final AppState state;
@@ -318,22 +319,56 @@ class _AddPlayersScreenState extends State<AddPlayersScreen> {
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
-                                    child: Text(
-                                      p.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
+                                    child: InkWell(
+                                      onTap: () => RenamePlayerDialog.show(
+                                        context,
+                                        currentName: p.name,
+                                        onRename: (newName) => widget.state.renameRosterPlayer(p.id, newName),
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                p.name,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    color: AppColors.textMuted,
+                                    hoverColor: AppColors.emerald.withValues(alpha: 0.1),
+                                    onPressed: () => RenamePlayerDialog.show(
+                                      context,
+                                      currentName: p.name,
+                                      onRename: (newName) => widget.state.renameRosterPlayer(p.id, newName),
+                                    ),
+                                    tooltip: "Ubah Nama",
+                                    constraints: const BoxConstraints(),
+                                    padding: const EdgeInsets.all(8),
+                                    style: IconButton.styleFrom(
+                                      foregroundColor: AppColors.emerald,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
                                   IconButton(
                                     icon: const Icon(Icons.close_rounded, size: 20),
                                     color: AppColors.textMuted,
                                     hoverColor: AppColors.crimsonSoft,
                                     highlightColor: AppColors.crimsonSoft,
                                     onPressed: () => widget.state.removeRosterPlayer(p.id),
-                                    tooltip: "Remove player",
+                                    tooltip: "Hapus Pemain",
                                     constraints: const BoxConstraints(),
                                     padding: const EdgeInsets.all(8),
                                     style: IconButton.styleFrom(

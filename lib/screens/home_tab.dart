@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/edit_match_score_modal.dart';
 
 class HomeTab extends StatelessWidget {
   final AppState state;
@@ -59,7 +60,7 @@ class HomeTab extends StatelessWidget {
                       ],
                       if (finishedMatches.isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        _buildRecentMatchesCard(finishedMatches),
+                        _buildRecentMatchesCard(context, finishedMatches),
                       ],
                     ],
                   ),
@@ -92,7 +93,7 @@ class HomeTab extends StatelessWidget {
           ],
           if (finishedMatches.isNotEmpty) ...[
             const SizedBox(height: 24),
-            _buildRecentMatchesCard(finishedMatches),
+            _buildRecentMatchesCard(context, finishedMatches),
           ],
           const SizedBox(height: 32),
         ],
@@ -543,76 +544,118 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentMatchesCard(List<dynamic> finishedMatches) {
-    return Container(
-      decoration: AppDecorations.modernCard(borderRadius: 16),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Recent Matches",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: finishedMatches.take(5).length,
-            separatorBuilder: (context, index) => const Divider(height: 24, color: AppColors.borderSubtle, thickness: 1),
-            itemBuilder: (context, index) {
-              final m = finishedMatches[index];
-              final teamANames = m.teamA.map((id) => state.byId[id]?.name ?? '').join(" & ");
-              final teamBNames = m.teamB.map((id) => state.byId[id]?.name ?? '').join(" & ");
+  Widget _buildRecentMatchesCard(BuildContext context, List<dynamic> finishedMatches) {
+    bool showAll = false;
 
-              return Row(
+    return StatefulBuilder(
+      builder: (context, setCardState) {
+        final displayList = showAll ? finishedMatches : finishedMatches.take(5).toList();
+
+        return Container(
+          decoration: AppDecorations.modernCard(borderRadius: 16),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundCanvas,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      "C${m.court}",
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.darkGreen,
-                      ),
+                  const Text(
+                    "Recent Matches",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-                        children: [
-                          TextSpan(text: teamANames, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          TextSpan(
-                            text: "  ${m.scoreA} – ${m.scoreB}  ",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.emerald,
-                            ),
-                          ),
-                          TextSpan(text: teamBNames, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ],
+                  if (finishedMatches.length > 5)
+                    GestureDetector(
+                      onTap: () {
+                        setCardState(() {
+                          showAll = !showAll;
+                        });
+                      },
+                      child: Text(
+                        showAll ? "Tampilkan Sedikit" : "Lihat Semua (${finishedMatches.length})",
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.emerald,
+                        ),
                       ),
                     ),
-                  ),
                 ],
-              );
-            },
+              ),
+              const SizedBox(height: 16),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: displayList.length,
+                separatorBuilder: (context, index) => const Divider(height: 20, color: AppColors.borderSubtle, thickness: 1),
+                itemBuilder: (context, index) {
+                  final m = displayList[index];
+                  final teamANames = m.teamA.map((id) => state.byId[id]?.name ?? '').join(" & ");
+                  final teamBNames = m.teamB.map((id) => state.byId[id]?.name ?? '').join(" & ");
+
+                  return Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundCanvas,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "C${m.court}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                            children: [
+                              TextSpan(text: teamANames, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              TextSpan(
+                                text: "  ${m.scoreA} – ${m.scoreB}  ",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.emerald,
+                                ),
+                              ),
+                              TextSpan(text: teamBNames, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_note_rounded, size: 20),
+                        color: AppColors.textMuted,
+                        hoverColor: AppColors.emerald.withValues(alpha: 0.1),
+                        onPressed: () => EditMatchScoreModal.show(context, match: m, state: state),
+                        tooltip: "Revisi Skor Pertandingan",
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(6),
+                        splashRadius: 18,
+                        style: IconButton.styleFrom(
+                          foregroundColor: AppColors.emerald,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

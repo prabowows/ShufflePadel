@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import 'edit_match_score_modal.dart';
+import 'rename_player_dialog.dart';
 
 class ProfileModal extends StatelessWidget {
   final Player player;
   final int? rank;
   final VoidCallback onClose;
+  final AppState? state;
 
   const ProfileModal({
     super.key,
     required this.player,
     this.rank,
     required this.onClose,
+    this.state,
   });
 
   @override
@@ -74,14 +79,40 @@ class ProfileModal extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          player.name,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                            color: AppColors.darkGreen,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              player.name,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                                color: AppColors.darkGreen,
+                              ),
+                            ),
+                            if (state != null) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                color: AppColors.textMuted,
+                                hoverColor: AppColors.emerald.withValues(alpha: 0.1),
+                                onPressed: () => RenamePlayerDialog.show(
+                                  context,
+                                  currentName: player.name,
+                                  onRename: (newName) {
+                                    state!.renamePlayer(player.id, newName);
+                                  },
+                                ),
+                                tooltip: "Ubah Nama Pemain",
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                                splashRadius: 18,
+                                style: IconButton.styleFrom(
+                                  foregroundColor: AppColors.emerald,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         if (rank != null) ...[
                           const SizedBox(height: 6),
@@ -297,15 +328,44 @@ class ProfileModal extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              // Score
-                              Text(
-                                h.score,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.darkGreen,
-                                  letterSpacing: -0.5,
-                                ),
+                              // Score & Edit
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    h.score,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.darkGreen,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  if (state != null) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_note_rounded, size: 20),
+                                      color: AppColors.textMuted,
+                                      hoverColor: AppColors.emerald.withValues(alpha: 0.1),
+                                      onPressed: () {
+                                        final targetMatch = state!.matches.firstWhere(
+                                          (m) => m.matchNumber == h.matchNumber,
+                                          orElse: () => PadelMatch(id: '', matchNumber: 0, court: 0, teamA: [], teamB: []),
+                                        );
+                                        if (targetMatch.id.isNotEmpty) {
+                                          EditMatchScoreModal.show(context, match: targetMatch, state: state!);
+                                        }
+                                      },
+                                      tooltip: "Revisi Skor",
+                                      constraints: const BoxConstraints(),
+                                      padding: const EdgeInsets.all(4),
+                                      splashRadius: 16,
+                                      style: IconButton.styleFrom(
+                                        foregroundColor: AppColors.emerald,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

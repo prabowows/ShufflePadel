@@ -188,6 +188,7 @@ class _RootControllerState extends State<RootController> {
             child: ProfileModal(
               player: player,
               rank: state.selectedRank,
+              state: state,
               onClose: () => Navigator.pop(context),
             ),
           );
@@ -202,6 +203,7 @@ class _RootControllerState extends State<RootController> {
           return ProfileModal(
             player: player,
             rank: state.selectedRank,
+            state: state,
             onClose: () => Navigator.pop(context),
           );
         },

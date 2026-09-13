@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/rename_player_dialog.dart';
 
 class PlayersTab extends StatefulWidget {
   final AppState state;
@@ -286,16 +287,40 @@ class _PlayersTabState extends State<PlayersTab> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            p.name,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textPrimary,
-                                              letterSpacing: -0.3,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  p.name,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.textPrimary,
+                                                    letterSpacing: -0.3,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              IconButton(
+                                                icon: const Icon(Icons.edit_outlined, size: 16),
+                                                color: AppColors.textMuted,
+                                                hoverColor: AppColors.emerald.withValues(alpha: 0.1),
+                                                onPressed: () => RenamePlayerDialog.show(
+                                                  context,
+                                                  currentName: p.name,
+                                                  onRename: (newName) => widget.state.renamePlayer(p.id, newName),
+                                                ),
+                                                tooltip: "Ubah Nama",
+                                                constraints: const BoxConstraints(),
+                                                padding: const EdgeInsets.all(4),
+                                                splashRadius: 16,
+                                                style: IconButton.styleFrom(
+                                                  foregroundColor: AppColors.emerald,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 2),
                                           Row(
                                             children: [
                                               Container(

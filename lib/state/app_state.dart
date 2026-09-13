@@ -290,6 +290,95 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void recalculatePlayerStats() {
+    final playerMap = byId;
+    final activePlayingPlayerIds = <String>{};
+    for (final m in matches) {
+      if (m.status == "playing") {
+        activePlayingPlayerIds.addAll(m.teamA);
+        activePlayingPlayerIds.addAll(m.teamB);
+      }
+    }
+
+    final Map<String, Player> freshPlayers = {
+      for (final p in players)
+        p.id: p.copyWith(
+          played: 0,
+          wins: 0,
+          losses: 0,
+          scoreFor: 0,
+          scoreAgainst: 0,
+          status: activePlayingPlayerIds.contains(p.id) ? "playing" : "ready",
+          history: [],
+        )
+    };
+
+    final finishedList = matches.where((m) => m.status == "finished" && m.scoreA != null && m.scoreB != null).toList()
+      ..sort((a, b) => a.matchNumber.compareTo(b.matchNumber));
+
+    for (final m in finishedList) {
+      final a = m.scoreA!;
+      final b = m.scoreB!;
+      final aWins = a > b;
+
+      for (final pId in m.teamA) {
+        final p = freshPlayers[pId];
+        if (p == null) continue;
+        final partnerId = m.teamA.firstWhere((id) => id != pId, orElse: () => '');
+        final partner = playerMap[partnerId];
+        final opponents = m.teamB.map((id) => playerMap[id]?.name ?? '').toList();
+
+        final updatedHistory = List<MatchHistoryItem>.from(p.history)
+          ..add(MatchHistoryItem(
+            matchNumber: m.matchNumber,
+            court: m.court,
+            partner: partner?.name ?? '',
+            opponents: opponents,
+            score: "$a–$b",
+            result: aWins ? "W" : "L",
+          ));
+
+        freshPlayers[pId] = p.copyWith(
+          played: p.played + 1,
+          wins: p.wins + (aWins ? 1 : 0),
+          losses: p.losses + (aWins ? 0 : 1),
+          scoreFor: p.scoreFor + a,
+          scoreAgainst: p.scoreAgainst + b,
+          history: updatedHistory,
+        );
+      }
+
+      for (final pId in m.teamB) {
+        final p = freshPlayers[pId];
+        if (p == null) continue;
+        final partnerId = m.teamB.firstWhere((id) => id != pId, orElse: () => '');
+        final partner = playerMap[partnerId];
+        final opponents = m.teamA.map((id) => playerMap[id]?.name ?? '').toList();
+
+        final updatedHistory = List<MatchHistoryItem>.from(p.history)
+          ..add(MatchHistoryItem(
+            matchNumber: m.matchNumber,
+            court: m.court,
+            partner: partner?.name ?? '',
+            opponents: opponents,
+            score: "$b–$a",
+            result: aWins ? "L" : "W",
+          ));
+
+        freshPlayers[pId] = p.copyWith(
+          played: p.played + 1,
+          wins: p.wins + (aWins ? 0 : 1),
+          losses: p.losses + (aWins ? 1 : 0),
+          scoreFor: p.scoreFor + b,
+          scoreAgainst: p.scoreAgainst + a,
+          history: updatedHistory,
+        );
+      }
+    }
+
+    players = players.map((p) => freshPlayers[p.id] ?? p).toList();
+  }
+
   void submitScore(String matchId) {
     final draft = scoreDrafts[matchId];
     if (draft == null || draft['a'] == null || draft['b'] == null) return;
@@ -303,72 +392,66 @@ class AppState extends ChangeNotifier {
     if (matchIndex == -1) return;
 
     final match = matches[matchIndex];
-    final aWins = a > b;
-
     matches[matchIndex] = match.copyWith(
       scoreA: a,
       scoreB: b,
       status: "finished",
     );
 
-    final playerMap = byId;
-    players = players.map((p) {
-      if (match.teamA.contains(p.id)) {
-        final partnerId = match.teamA.firstWhere((id) => id != p.id, orElse: () => '');
-        final partner = playerMap[partnerId];
-        final opponents = match.teamB.map((id) => playerMap[id]?.name ?? '').toList();
-
-        final updatedHistory = List<MatchHistoryItem>.from(p.history)
-          ..add(MatchHistoryItem(
-            matchNumber: match.matchNumber,
-            court: match.court,
-            partner: partner?.name ?? '',
-            opponents: opponents,
-            score: "$a–$b",
-            result: aWins ? "W" : "L",
-          ));
-
-        return p.copyWith(
-          status: "ready",
-          played: p.played + 1,
-          wins: p.wins + (aWins ? 1 : 0),
-          losses: p.losses + (aWins ? 0 : 1),
-          scoreFor: p.scoreFor + a,
-          scoreAgainst: p.scoreAgainst + b,
-          history: updatedHistory,
-        );
-      }
-
-      if (match.teamB.contains(p.id)) {
-        final partnerId = match.teamB.firstWhere((id) => id != p.id, orElse: () => '');
-        final partner = playerMap[partnerId];
-        final opponents = match.teamA.map((id) => playerMap[id]?.name ?? '').toList();
-
-        final updatedHistory = List<MatchHistoryItem>.from(p.history)
-          ..add(MatchHistoryItem(
-            matchNumber: match.matchNumber,
-            court: match.court,
-            partner: partner?.name ?? '',
-            opponents: opponents,
-            score: "$b–$a",
-            result: aWins ? "L" : "W",
-          ));
-
-        return p.copyWith(
-          status: "ready",
-          played: p.played + 1,
-          wins: p.wins + (aWins ? 0 : 1),
-          losses: p.losses + (aWins ? 1 : 0),
-          scoreFor: p.scoreFor + b,
-          scoreAgainst: p.scoreAgainst + a,
-          history: updatedHistory,
-        );
-      }
-
-      return p;
-    }).toList();
-
     scoreDrafts.remove(matchId);
+    recalculatePlayerStats();
+    saveCurrentSessionToStorage();
+    notifyListeners();
+  }
+
+  void editMatchScore(String matchId, int newScoreA, int newScoreB) {
+    final matchIndex = matches.indexWhere((m) => m.id == matchId);
+    if (matchIndex == -1) return;
+
+    matches[matchIndex] = matches[matchIndex].copyWith(
+      scoreA: newScoreA,
+      scoreB: newScoreB,
+      status: "finished",
+    );
+
+    recalculatePlayerStats();
+    saveCurrentSessionToStorage();
+    notifyListeners();
+  }
+
+  void reopenMatch(String matchId) {
+    final matchIndex = matches.indexWhere((m) => m.id == matchId);
+    if (matchIndex == -1) return;
+
+    final m = matches[matchIndex];
+    matches[matchIndex] = m.copyWith(status: "playing");
+    scoreDrafts[matchId] = {
+      'a': '${m.scoreA ?? ""}',
+      'b': '${m.scoreB ?? ""}',
+    };
+
+    recalculatePlayerStats();
+    saveCurrentSessionToStorage();
+    notifyListeners();
+  }
+
+  void renamePlayer(String playerId, String newName) {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+
+    players = players.map((p) => p.id == playerId ? p.copyWith(name: trimmed) : p).toList();
+    rosterPlayers = rosterPlayers.map((p) => p.id == playerId ? p.copyWith(name: trimmed) : p).toList();
+
+    recalculatePlayerStats();
+    saveCurrentSessionToStorage();
+    notifyListeners();
+  }
+
+  void renameRosterPlayer(String playerId, String newName) {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+
+    rosterPlayers = rosterPlayers.map((p) => p.id == playerId ? p.copyWith(name: trimmed) : p).toList();
     saveCurrentSessionToStorage();
     notifyListeners();
   }
