@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -32,16 +33,37 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
 
   List<Map<String, dynamic>> _savedSessions = [];
 
+  static String generateUniqueCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = Random();
+    final part = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
+    return 'PDL-$part';
+  }
+
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final defaultDate = '${now.day} ${months[now.month - 1]} ${now.year}';
+    final initialDate = widget.state.session.date.isNotEmpty ? widget.state.session.date : defaultDate;
+    widget.state.session.date = initialDate;
+
+    final initialPasscode = widget.state.session.passcode.isNotEmpty
+        ? widget.state.session.passcode
+        : generateUniqueCode();
+    widget.state.session.passcode = initialPasscode;
+
     _nameController = TextEditingController(text: widget.state.session.name);
-    _dateController = TextEditingController(text: widget.state.session.date);
+    _dateController = TextEditingController(text: initialDate);
     _startController = TextEditingController(text: widget.state.session.timeStart);
     _endController = TextEditingController(text: widget.state.session.timeEnd);
-    _passcodeController = TextEditingController(text: widget.state.session.passcode);
+    _passcodeController = TextEditingController(text: initialPasscode);
 
-    _joinDateController = TextEditingController();
+    _joinDateController = TextEditingController(text: defaultDate);
     _joinPasscodeController = TextEditingController();
 
     _loadSaved();
@@ -145,7 +167,9 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canContinue = _nameController.text.trim().isNotEmpty && _passcodeController.text.trim().isNotEmpty;
+    final canContinue = _nameController.text.trim().isNotEmpty &&
+        _passcodeController.text.trim().isNotEmpty &&
+        _dateController.text.trim().isNotEmpty;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -589,14 +613,14 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
         ),
         const SizedBox(height: 18),
 
-        // Session Passcode
+        // Session Passcode / Unique Code
         Wrap(
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 8,
           runSpacing: 4,
           children: [
-            _buildLabel("Session Passcode"),
+            _buildLabel("Session Code (Auto-Generated)"),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -604,25 +628,56 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text(
-                "Required for access",
+                "Unique Room Code",
                 style: TextStyle(fontSize: 11, color: AppColors.emerald, fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        _buildModernTextField(
-          controller: _passcodeController,
-          hint: "e.g. 1234 or PADEL26",
-          icon: Icons.lock_outline_rounded,
-          onChanged: (val) {
-            _syncState();
-            setState(() {});
-          },
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: AppDecorations.cleanWhiteCard(borderRadius: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.vpn_key_rounded, color: AppColors.emerald, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _passcodeController,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    color: AppColors.darkGreen,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: "PDL-XXXX",
+                  ),
+                  onChanged: (val) {
+                    _syncState();
+                    setState(() {});
+                  },
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  final newCode = generateUniqueCode();
+                  _passcodeController.text = newCode;
+                  _syncState();
+                  setState(() {});
+                },
+                tooltip: "Buat Kode Baru",
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.emerald, size: 20),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         const Text(
-          "💡 This passcode is used by players/spectators to join and view tournament results.",
+          "💡 Kode unik ini otomatis dibuat untuk sesi turnamen Anda. Pemain cukup memasukkan kode ini untuk bergabung.",
           style: TextStyle(
             fontSize: 11.5,
             color: AppColors.textSecondary,
@@ -837,7 +892,7 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   //  JOIN / VIEW FORM CONTENT
   // ─────────────────────────────────────────────
   Widget _buildJoinFormContent() {
-    final canJoin = _joinDateController.text.trim().isNotEmpty && _joinPasscodeController.text.trim().isNotEmpty;
+    final canJoin = _joinPasscodeController.text.trim().isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,7 +928,7 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
         ),
         const SizedBox(height: 6),
         const Text(
-          "Enter tournament date & passcode to view live court scores or the final leaderboard.",
+          "Masukkan Kode Sesi untuk langsung melihat live court scores atau leaderboard turnamen.",
           style: TextStyle(
             fontSize: 13.5,
             color: AppColors.textSecondary,
@@ -882,25 +937,48 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
         ),
         const SizedBox(height: 24),
 
-        // Session Date
-        _buildLabel("Session Date"),
-        const SizedBox(height: 8),
-        _buildPickerField(
-          value: _joinDateController.text,
-          hint: "Select session date to view",
-          icon: Icons.calendar_today_rounded,
-          onTap: () => _pickDate(isJoin: true),
-        ),
-        const SizedBox(height: 18),
-
-        // Passcode
-        _buildLabel("Session Passcode"),
+        // Session Code
+        _buildLabel("Kode Sesi Turnamen"),
         const SizedBox(height: 8),
         _buildModernTextField(
           controller: _joinPasscodeController,
-          hint: "Enter session passcode",
-          icon: Icons.lock_outline_rounded,
+          hint: "Contoh: PDL-XXXX atau 123456",
+          icon: Icons.vpn_key_rounded,
           onChanged: (val) => setState(() {}),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          "💡 Cukup masukkan kode sesi. Anda tidak perlu memilih tanggal.",
+          style: TextStyle(
+            fontSize: 11.5,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Optional Date Filter
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: const Text(
+              "Filter Tanggal Manual (Opsional)",
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            children: [
+              _buildPickerField(
+                value: _joinDateController.text,
+                hint: "Pilih tanggal turnamen",
+                icon: Icons.calendar_today_rounded,
+                onTap: () => _pickDate(isJoin: true),
+              ),
+            ],
+          ),
         ),
 
         // Error message if any
@@ -955,9 +1033,9 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
             child: ElevatedButton(
               onPressed: canJoin && !widget.state.isJoining
                   ? () async {
-                      await widget.state.joinSessionByDateAndPasscode(
-                        _joinDateController.text,
-                        _joinPasscodeController.text,
+                      await widget.state.joinSessionByCode(
+                        _joinPasscodeController.text.trim(),
+                        date: _joinDateController.text.trim(),
                       );
                     }
                   : null,

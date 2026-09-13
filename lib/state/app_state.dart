@@ -479,7 +479,7 @@ class AppState extends ChangeNotifier {
   // Storage and Join Session Logic
   Future<void> saveCurrentSessionToStorage() async {
     try {
-      if (session.name.isEmpty && session.date.isEmpty) return;
+      if (session.date.trim().isEmpty || session.passcode.trim().isEmpty) return;
       final prefs = await SharedPreferences.getInstance();
       final rawList = prefs.getStringList(_storageKey) ?? [];
 
@@ -550,17 +550,16 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<bool> joinSessionByDateAndPasscode(String date, String passcode) async {
+  Future<bool> joinSessionByCode(String code, {String? date}) async {
     isJoining = true;
     joinError = "";
     notifyListeners();
 
     try {
-      final cleanDate = date.trim().toLowerCase();
-      final cleanPasscode = passcode.trim();
+      final cleanCode = code.trim();
 
-      if (cleanDate.isEmpty || cleanPasscode.isEmpty) {
-        joinError = "Please enter the session date and passcode.";
+      if (cleanCode.isEmpty) {
+        joinError = "Please enter the session code.";
         isJoining = false;
         notifyListeners();
         return false;
@@ -570,7 +569,7 @@ class AppState extends ChangeNotifier {
 
       // 1. First attempt: Query Cloud Firestore
       try {
-        final remoteData = await FirestoreService().getSessionByDateAndPasscode(cleanDate, cleanPasscode);
+        final remoteData = await FirestoreService().getSessionByCode(cleanCode, date: date);
         if (remoteData != null) {
           matched = remoteData;
         }
@@ -588,9 +587,8 @@ class AppState extends ChangeNotifier {
             final decoded = jsonDecode(item) as Map<String, dynamic>;
             final s = decoded['session'] as Map<String, dynamic>?;
             if (s != null) {
-              final sDate = (s['date'] as String? ?? '').trim().toLowerCase();
-              final sPass = (s['passcode'] as String? ?? '').trim();
-              if (sDate == cleanDate && sPass == cleanPasscode) {
+              final sPass = (s['passcode'] as String? ?? '').trim().toLowerCase();
+              if (sPass == cleanCode.toLowerCase()) {
                 matched = decoded;
                 break;
               }
@@ -600,18 +598,21 @@ class AppState extends ChangeNotifier {
       }
 
       if (matched == null) {
-        joinError = "Session not found for that date and passcode. Please check your inputs.";
+        joinError = "Session not found for code '$cleanCode'. Please verify the code and try again.";
         isJoining = false;
         notifyListeners();
         return false;
       }
 
       // Restore session data
-      final sMap = matched['session'] as Map<String, dynamic>;
+      final sMap = matched['session'] as Map<String, dynamic>? ?? {};
       session = PadelSession.fromJson(sMap);
 
       final pList = (matched['players'] as List<dynamic>?) ?? [];
       players = pList.map((e) => Player.fromJson(e as Map<String, dynamic>)).toList();
+
+      final rList = (matched['rosterPlayers'] as List<dynamic>?) ?? [];
+      rosterPlayers = rList.map((e) => Player.fromJson(e as Map<String, dynamic>)).toList();
 
       final mList = (matched['matches'] as List<dynamic>?) ?? [];
       matches = mList.map((e) => PadelMatch.fromJson(e as Map<String, dynamic>)).toList();
@@ -640,6 +641,10 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> joinSessionByDateAndPasscode(String date, String passcode) async {
+    return joinSessionByCode(passcode, date: date);
   }
 }
 

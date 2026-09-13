@@ -11,6 +11,7 @@ import 'services/firestore_service.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 import 'widgets/profile_modal.dart';
+import 'widgets/share_session_modal.dart';
 import 'widgets/shuffle_modal.dart';
 
 void main() async {
@@ -69,6 +70,18 @@ class _RootControllerState extends State<RootController> {
   void initState() {
     super.initState();
     state.addListener(_onStateChanged);
+    _checkUrlParams();
+  }
+
+  void _checkUrlParams() {
+    try {
+      final code = Uri.base.queryParameters['code'];
+      if (code != null && code.trim().isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          state.joinSessionByCode(code.trim());
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -80,6 +93,38 @@ class _RootControllerState extends State<RootController> {
 
   void _onStateChanged() {
     setState(() {});
+  }
+
+  void _showShareModal() {
+    final isDesktop = ResponsiveBreakpoints.isDesktop(context);
+
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(24),
+            child: ShareSessionModal(
+              session: state.session,
+              onClose: () => Navigator.pop(context),
+            ),
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return ShareSessionModal(
+            session: state.session,
+            onClose: () => Navigator.pop(context),
+          );
+        },
+      );
+    }
   }
 
   void _showShuffleModal() {
@@ -372,9 +417,52 @@ class _RootControllerState extends State<RootController> {
                         Row(
                           children: [
                             if (state.session.passcode.isNotEmpty) ...[
-                              _buildHeaderStatusBadge(
-                                icon: Icons.lock_outline_rounded,
-                                label: "Passcode: ${state.session.passcode}",
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _showShareModal,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceSecondary,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.share_rounded, size: 14, color: AppColors.emerald),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          "Code: ${state.session.passcode}",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.darkGreen,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.emerald,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text(
+                                            "SHARE",
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 10),
                             ],
@@ -560,20 +648,33 @@ class _RootControllerState extends State<RootController> {
                                   ],
                                 ),
                                 if (state.session.passcode.isNotEmpty) ...[
-                                  const SizedBox(width: 10),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.lock_outline_rounded, size: 13, color: AppColors.emerald),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        state.session.passcode,
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: AppColors.emerald,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: _showShareModal,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceSecondary,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
                                       ),
-                                    ],
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.share_rounded, size: 11, color: AppColors.emerald),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            state.session.passcode,
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.emerald,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ],
